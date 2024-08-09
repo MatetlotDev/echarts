@@ -243,4 +243,3 @@ function fixRoundingError(val: number, originalVal: number): number {
 Scale.registerClass(LogScale);
 
 export default LogScale;
-
