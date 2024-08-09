@@ -148,13 +148,13 @@ class LogScale extends Scale {
         const extent = data.getApproximateExtent(dim);
 
         // Filtrer les valeurs <= 0
-        // if (extent[0] <= 0) {
-        //     extent[0] = 0; // Conservez 0 au lieu de 0.01
-        // }
+        if (extent[0] <= 0) {
+            extent[0] = 0; // Conservez 0 au lieu de 0.01
+        }
 
-        // if (extent[1] <= 0) {
-        //     extent[1] = 0; // Conservez 0 au lieu de 0.01
-        // }
+        if (extent[1] <= 0) {
+            extent[1] = 0; // Conservez 0 au lieu de 0.01
+        }
 
         this.unionExtent(extent);
     }
@@ -214,16 +214,16 @@ class LogScale extends Scale {
 
     normalize(val: number): number {
         if (val <= 0) {
-            val = 0.01;
-        } // Filtrer les valeurs <= 0
+            return 0; // Conservez 0 inchangé
+        }
         val = mathLog(val) / mathLog(this.base);
         return scaleHelper.normalize(val, this._extent);
     }
 
     scale(val: number): number {
         if (val <= 0) {
-            val = 0.01;
-        } // Filtrer les valeurs <= 0
+            return 0; // Conservez 0 inchangé
+        }
         val = scaleHelper.scale(val, this._extent);
         return mathPow(this.base, val);
     }
