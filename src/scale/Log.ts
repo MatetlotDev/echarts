@@ -60,7 +60,10 @@ class LogScale extends Scale {
 
         const ticks = intervalScaleProto.getTicks.call(this, expandToNicedExtent);
 
-        return zrUtil.map(ticks, function (tick) {
+        // Ajoutez 0 comme un tick séparé si l'intervalle comprend 0
+        const hasZero = extent[0] <= 0;
+
+        const finalTicks = zrUtil.map(ticks, function (tick) {
             const val = tick.value;
             let powVal = numberUtil.round(mathPow(this.base, val));
 
@@ -75,6 +78,12 @@ class LogScale extends Scale {
                 value: powVal
             };
         }, this);
+
+        if (hasZero) {
+            finalTicks.unshift({ value: 0 });
+        }
+
+        return finalTicks;
     }
 
     setExtent(start: number, end: number): void {
@@ -82,14 +91,19 @@ class LogScale extends Scale {
 
         // Filtrer les valeurs <= 0
         if (start <= 0) {
-            start = 0.01; // Remplacer 0 ou valeurs négatives par un petit nombre positif
+            start = 0; // Conservez 0 au lieu de 0.01
         }
-        if (end <= 0) {
-            end = 0.01;
+        else {
+            start = mathLog(start) / base;
         }
 
-        start = mathLog(start) / base;
-        end = mathLog(end) / base;
+        if (end <= 0) {
+            end = 0; // Conservez 0 au lieu de 0.01
+        }
+        else {
+            end = mathLog(end) / base;
+        }
+
         intervalScaleProto.setExtent.call(this, start, end);
     }
 
@@ -114,14 +128,19 @@ class LogScale extends Scale {
 
         // Filtrer les valeurs <= 0
         if (extent[0] <= 0) {
-            extent[0] = 0.01;
+            extent[0] = 0; // Conservez 0 au lieu de 0.01
         }
-        if (extent[1] <= 0) {
-            extent[1] = 0.01;
+        else {
+            extent[0] = mathLog(extent[0]) / mathLog(base);
         }
 
-        extent[0] = mathLog(extent[0]) / mathLog(base);
-        extent[1] = mathLog(extent[1]) / mathLog(base);
+        if (extent[1] <= 0) {
+            extent[1] = 0; // Conservez 0 au lieu de 0.01
+        }
+        else {
+            extent[1] = mathLog(extent[1]) / mathLog(base);
+        }
+
         scaleProto.unionExtent.call(this, extent);
     }
 
@@ -130,10 +149,11 @@ class LogScale extends Scale {
 
         // Filtrer les valeurs <= 0
         if (extent[0] <= 0) {
-            extent[0] = 0.01;
+            extent[0] = 0; // Conservez 0 au lieu de 0.01
         }
+
         if (extent[1] <= 0) {
-            extent[1] = 0.01;
+            extent[1] = 0; // Conservez 0 au lieu de 0.01
         }
 
         this.unionExtent(extent);
