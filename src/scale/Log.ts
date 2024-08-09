@@ -50,15 +50,9 @@ class LogScale extends Scale {
     private _fixMin: boolean;
     private _fixMax: boolean;
 
-    // FIXME:TS actually used by `IntervalScale`
     private _interval: number = 0;
-    // FIXME:TS actually used by `IntervalScale`
     private _niceExtent: [number, number];
 
-
-    /**
-     * @param Whether expand the ticks to niced extent.
-     */
     getTicks(expandToNicedExtent?: boolean): ScaleTick[] {
         const originalScale = this._originalScale;
         const extent = this._extent;
@@ -70,7 +64,6 @@ class LogScale extends Scale {
             const val = tick.value;
             let powVal = numberUtil.round(mathPow(this.base, val));
 
-            // Fix #4158
             powVal = (val === extent[0] && this._fixMin)
                 ? fixRoundingError(powVal, originalExtent[0])
                 : powVal;
@@ -86,22 +79,26 @@ class LogScale extends Scale {
 
     setExtent(start: number, end: number): void {
         const base = mathLog(this.base);
-        // log(-Infinity) is NaN, so safe guard here
-        start = mathLog(Math.max(0, start)) / base;
-        end = mathLog(Math.max(0, end)) / base;
+
+        // Filtrer les valeurs <= 0
+        if (start <= 0) {
+            start = 0.01; // Remplacer 0 ou valeurs négatives par un petit nombre positif
+        }
+        if (end <= 0) {
+            end = 0.01;
+        }
+
+        start = mathLog(start) / base;
+        end = mathLog(end) / base;
         intervalScaleProto.setExtent.call(this, start, end);
     }
 
-    /**
-     * @return {number} end
-     */
     getExtent() {
         const base = this.base;
         const extent = scaleProto.getExtent.call(this);
         extent[0] = mathPow(base, extent[0]);
         extent[1] = mathPow(base, extent[1]);
 
-        // Fix #4158
         const originalScale = this._originalScale;
         const originalExtent = originalScale.getExtent();
         this._fixMin && (extent[0] = fixRoundingError(extent[0], originalExtent[0]));
@@ -114,21 +111,34 @@ class LogScale extends Scale {
         this._originalScale.unionExtent(extent);
 
         const base = this.base;
+
+        // Filtrer les valeurs <= 0
+        if (extent[0] <= 0) {
+            extent[0] = 0.01;
+        }
+        if (extent[1] <= 0) {
+            extent[1] = 0.01;
+        }
+
         extent[0] = mathLog(extent[0]) / mathLog(base);
         extent[1] = mathLog(extent[1]) / mathLog(base);
         scaleProto.unionExtent.call(this, extent);
     }
 
     unionExtentFromData(data: SeriesData, dim: DimensionName): void {
-        // TODO
-        // filter value that <= 0
-        this.unionExtent(data.getApproximateExtent(dim));
+        const extent = data.getApproximateExtent(dim);
+
+        // Filtrer les valeurs <= 0
+        if (extent[0] <= 0) {
+            extent[0] = 0.01;
+        }
+        if (extent[1] <= 0) {
+            extent[1] = 0.01;
+        }
+
+        this.unionExtent(extent);
     }
 
-    /**
-     * Update interval and extent of intervals for nice ticks
-     * @param approxTickNum default 10 Given approx tick number
-     */
     calcNiceTicks(approxTickNum: number): void {
         approxTickNum = approxTickNum || 10;
         const extent = this._extent;
@@ -140,12 +150,10 @@ class LogScale extends Scale {
         let interval = numberUtil.quantity(span);
         const err = approxTickNum / span * interval;
 
-        // Filter ticks to get closer to the desired count.
         if (err <= 0.5) {
             interval *= 10;
         }
 
-        // Interval should be integer
         while (!isNaN(interval) && Math.abs(interval) < 1 && Math.abs(interval) > 0) {
             interval *= 10;
         }
@@ -160,7 +168,7 @@ class LogScale extends Scale {
     }
 
     calcNiceExtent(opt: {
-        splitNumber: number, // By default 5.
+        splitNumber: number,
         fixMin?: boolean,
         fixMax?: boolean,
         minInterval?: number,
@@ -177,16 +185,25 @@ class LogScale extends Scale {
     }
 
     contain(val: number): boolean {
+        if (val <= 0) {
+            return false;
+        } // Filtrer les valeurs <= 0
         val = mathLog(val) / mathLog(this.base);
         return scaleHelper.contain(val, this._extent);
     }
 
     normalize(val: number): number {
+        if (val <= 0) {
+            val = 0.01;
+        } // Filtrer les valeurs <= 0
         val = mathLog(val) / mathLog(this.base);
         return scaleHelper.normalize(val, this._extent);
     }
 
     scale(val: number): number {
+        if (val <= 0) {
+            val = 0.01;
+        } // Filtrer les valeurs <= 0
         val = scaleHelper.scale(val, this._extent);
         return mathPow(this.base, val);
     }
@@ -203,7 +220,7 @@ function fixRoundingError(val: number, originalVal: number): number {
     return roundingErrorFix(val, numberUtil.getPrecision(originalVal));
 }
 
-
 Scale.registerClass(LogScale);
 
 export default LogScale;
+
